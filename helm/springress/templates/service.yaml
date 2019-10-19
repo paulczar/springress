@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "springress.fullname" . }}-gateway
+  labels:
+    app: {{ include "springress.name" . }}-gateway
+    chart: {{ include "springress.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      targetPort: http
+      protocol: TCP
+      port: {{ .Values.service.port }}
+  selector:
+    app: {{ include "springress.name" . }}-gateway
+    release: {{ .Release.Name }}

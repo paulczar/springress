@@ -1,0 +1,14 @@
+{{ if .Values.springConfig }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "springress.fullname" . }}-app
+  labels:
+    app: {{ include "springress.name" . }}
+    chart: {{ include "springress.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  application.yaml:
+    {{ toYaml .Values.SpringConfig | indent 4  }}
+{{ end }}

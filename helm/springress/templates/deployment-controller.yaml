@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "springress.fullname" . }}-controller
+  labels:
+    app: {{ include "springress.name" . }}-controller
+    chart: {{ include "springress.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "springress.name" . }}-controller
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "springress.name" . }}-controller
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ template "springress.serviceAccountName" . }}-controller
+      containers:
+        - name: controller
+          image: "paulczar/springress-controller"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env: []

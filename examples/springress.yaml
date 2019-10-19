@@ -1,0 +1,269 @@
+---
+# Source: springress/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: springress
+  namespace: "default"
+  labels:
+    app: springress
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: springress-controller
+  namespace: "default"
+  labels:
+    app: springress
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+---
+# Source: springress/templates/rbac-controller.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: springress-controller
+  labels:
+    app: springress
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+rules:
+  - apiGroups: ["extensions"]
+    resources: ["ingresses"]
+    verbs: ["get","list","read","watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: springress-controller
+  labels:
+    app: springress
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: springress-controller
+subjects:
+  - name: springress-controller
+    namespace: "default"
+    kind: ServiceAccount
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: springress-controller
+  labels:
+    app: springress
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: springress-controller
+  labels:
+    app: springress
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: springress-controller
+subjects:
+  - name: springress-controller
+    namespace: "default"
+    kind: ServiceAccount
+
+---
+# Source: springress/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: springress
+  labels:
+    app: springress
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+rules:
+  - apiGroups: [""]
+    resources: ["services", "pods", "endpoints", "configmaps"]
+    verbs: ["get","list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: springress
+  labels:
+    app: springress
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: springress
+subjects:
+  - name: springress
+    namespace: "default"
+    kind: ServiceAccount
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: springress
+  labels:
+    app: springress
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["read","watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: springress
+  labels:
+    app: springress
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: springress
+subjects:
+  - name: springress
+    namespace: "default"
+    kind: ServiceAccount
+
+---
+# Source: springress/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: springress-gateway
+  labels:
+    app: springress-gateway
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      targetPort: http
+      protocol: TCP
+      port: 9000
+  selector:
+    app: springress-gateway
+    release: springress
+
+---
+# Source: springress/templates/deployment-controller.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: springress-controller
+  labels:
+    app: springress-controller
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: springress-controller
+      release: springress
+  template:
+    metadata:
+      labels:
+        app: springress-controller
+        release: springress
+    spec:
+      serviceAccountName: springress-controller
+      containers:
+        - name: controller
+          image: "paulczar/springress-controller"
+          imagePullPolicy: Always
+          env: []
+
+---
+# Source: springress/templates/deployment-gateway.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: springress-gateway
+  labels:
+    app: springress-gateway
+    chart: springress-0.1.0
+    release: springress
+    heritage: Tiller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: springress-gateway
+      release: springress
+  template:
+    metadata:
+      labels:
+        app: springress-gateway
+        release: springress
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      serviceAccountName: springress
+      
+      containers:
+        - name: springress
+          
+          image: "paulczar/springress:0.0.1-SNAPSHOT"
+          imagePullPolicy: Always
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: kubernetes
+            - name: KUBERNETES_TRUST_CERTIFICATES
+              value: "true"
+            
+          ports:
+            - name: http
+              containerPort: 9000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 300
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            {}
+            
+
+---
+# Source: springress/templates/cm-app.yaml
+

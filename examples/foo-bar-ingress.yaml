@@ -1,0 +1,95 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: foo-bar
+  annotations:
+    kubernetes.io/ingress.class: spring
+spec:
+  rules:
+  - host: foo.com
+    http:
+      paths:
+      - backend:
+          serviceName: foo
+          servicePort: 8080
+  - host: bar.com
+    http:
+      paths:
+      - backend:
+          serviceName: bar
+          servicePort: 8080
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: foo
+  name: foo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: foo
+  template:
+    metadata:
+      labels:
+        app: foo
+    spec:
+      containers:
+      - image: paulczar/spring-helloworld
+        name: foo
+        env:
+        - name: MESSAGE
+          value: HELLO FOO
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: bar
+  name: bar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bar
+  template:
+    metadata:
+      labels:
+        app: bar
+    spec:
+      containers:
+      - image: paulczar/spring-helloworld
+        name: bar
+        env:
+        - name: MESSAGE
+          value: HELLO BAR
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: foo
+  name: foo
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: foo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: bar
+  name: bar
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: bar

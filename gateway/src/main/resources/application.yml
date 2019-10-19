@@ -1,0 +1,75 @@
+spring:
+  profiles:
+    active: kubernetes
+  cloud:
+    kubernetes:
+      reload:
+        enabled: true
+        strategy: refresh
+server:
+  port: 9000
+
+management:
+  endpoint:
+    gateway.enabled: true
+    restart.enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: prometheus,health,info,refresh
+    enabled-by-default: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles}
+    export:
+      prometheus:
+        descriptions: true
+        enabled: ${prometheus.enabled:true} # Whether exporting of metrics to Prometheus is enabled.
+        step: 1m # Step size (i.e. reporting frequency) to use.
+        pushgateway:
+          base-url: ${prometheus.url:localhost:9091} # Base URL for the Pushgateway.
+          enabled: ${prometheus.push.enabled:true} # Enable publishing via a Prometheus Pushgateway.
+          job: ${spring.application.name}  # Job identifier for this application instance.
+          push-rate: 1m # Frequency with which to push metrics.
+          shutdown-operation: push # Operation that should be performed on shutdown.
+
+logging:
+  level:
+    root: INFO
+    kafka.*: WARN
+    org.springframework.*: INFO
+    org.neo4j.*: INFO
+    com.memorynotfound: DEBUG
+    org.apache.kafka.*: ERROR
+---
+spring:
+  profiles: kubernetes
+  cloud:
+    kubernetes:
+      enabled: true
+      discovery:
+        enabled: true
+      ribbon:
+        enabled: true
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+          url-expression: "'http://'+serviceId"
+kubernetes.trust.certificates: true
+# disable eureka
+ribbon.eureka.enabled: false
+eureka.client.enabled: false
+prometheus.push.enabled: false
+---
+spring:
+  profiles: test
+  cloud:
+    kubernetes.discovery.enabled: false
+    kubernetes.ribbon.enabled: false
+    kubernetes.enabled: false
+eureka:
+  client:
+    enabled: false
+prometheus.enabled: false
